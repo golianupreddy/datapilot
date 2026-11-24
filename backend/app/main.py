@@ -66,6 +66,17 @@ def healthz():
     return {"status": "ok"}
 
 
+@app.get("/")
+def root():
+    return {
+        "service": "DataPilot Analytics API",
+        "status": "ok",
+        "docs": "/docs",
+        "health": "/health",
+        "frontend": "https://datapilot-bay.vercel.app/",
+    }
+
+
 @app.get("/health")
 def health():
     db_ok = True
