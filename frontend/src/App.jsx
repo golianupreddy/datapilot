@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+﻿import React, { useEffect, useState } from 'react';
 import {
   Bar,
   BarChart,
@@ -166,273 +166,295 @@ export default function App() {
 
   return (
     <div className='app-shell'>
-      <header className='topbar'>
-        <div className='brand'>
-          <div className='brand-badge'>DP</div>
-          <div>
-            <h1>DataPilot Analytics</h1>
-            <p>Read-only natural language SQL &amp; self-healing telemetry over Northwind</p>
-          </div>
-        </div>
-        <nav className='nav-tabs'>
-          <button className={tab === 'ask' ? 'tab-btn active' : 'tab-btn'} onClick={() => setTab('ask')}>
-            <Sparkles size={15} /> Ask SQL
-          </button>
-          <button className={tab === 'traces' ? 'tab-btn active' : 'tab-btn'} onClick={() => setTab('traces')}>
-            <Activity size={15} /> Traces
-          </button>
-          <button className={tab === 'evals' ? 'tab-btn active' : 'tab-btn'} onClick={() => setTab('evals')}>
-            <BarChart3 size={15} /> Evals
-          </button>
-        </nav>
-      </header>
-
-      {tab === 'ask' && (
-        <>
-          <section className='card'>
-            <form
-              className='ask-form'
-              onSubmit={(e) => {
-                e.preventDefault();
-                runAsk();
-              }}
-            >
-              <input
-                className='ask-input'
-                value={question}
-                onChange={(e) => setQuestion(e.target.value)}
-                placeholder='Ask a question about Northwind orders, products, customers, employees...'
-              />
-              <select className='select-box' value={mode} onChange={(e) => setMode(e.target.value)}>
-                <option value='full'>Mode: full</option>
-                <option value='retrieval'>Mode: retrieval</option>
-                <option value='baseline'>Mode: baseline</option>
-              </select>
-              <button className='btn-primary' type='submit' disabled={loading}>
-                <Play size={15} /> {loading ? 'Running...' : 'Run Query'}
-              </button>
-            </form>
-
-            <div className='samples'>
-              {SAMPLE_QUESTIONS.map((sq) => (
-                <button
-                  key={sq}
-                  type='button'
-                  className='chip'
-                  onClick={() => {
-                    setQuestion(sq);
-                    runAsk(sq, mode);
-                  }}
-                >
-                  {sq}
-                </button>
-              ))}
+      <div className='main-content'>
+        <header className='topbar'>
+          <div className='brand'>
+            <div className='brand-badge'>DP</div>
+            <div>
+              <h1>DataPilot Analytics</h1>
+              <p>Read-only natural language SQL &amp; self-healing telemetry over Northwind</p>
             </div>
-          </section>
+          </div>
+          <nav className='nav-tabs'>
+            <button className={tab === 'ask' ? 'tab-btn active' : 'tab-btn'} onClick={() => setTab('ask')}>
+              <Sparkles size={15} /> Ask SQL
+            </button>
+            <button className={tab === 'traces' ? 'tab-btn active' : 'tab-btn'} onClick={() => setTab('traces')}>
+              <Activity size={15} /> Traces
+            </button>
+            <button className={tab === 'evals' ? 'tab-btn active' : 'tab-btn'} onClick={() => setTab('evals')}>
+              <BarChart3 size={15} /> Evals
+            </button>
+          </nav>
+        </header>
 
-          {result && (
-            <>
-              <div className='metrics-row'>
-                <div className='metric-box'>
-                  <div className='metric-label'>Status</div>
-                  <div className='metric-val'>
-                    {result.success ? (
-                      <span className='badge badge-ok'>
-                        <CheckCircle2 size={12} style={{ verticalAlign: '-2px' }} /> Success
-                      </span>
-                    ) : (
-                      <span className='badge badge-err'>
-                        <XCircle size={12} style={{ verticalAlign: '-2px' }} /> Failed / Refused
-                      </span>
+        {tab === 'ask' && (
+          <>
+            <section className='card'>
+              <form
+                className='ask-form'
+                onSubmit={(e) => {
+                  e.preventDefault();
+                  runAsk();
+                }}
+              >
+                <input
+                  className='ask-input'
+                  value={question}
+                  onChange={(e) => setQuestion(e.target.value)}
+                  placeholder='Ask a question about Northwind orders, products, customers, employees...'
+                />
+                <select className='select-box' value={mode} onChange={(e) => setMode(e.target.value)}>
+                  <option value='full'>Mode: full</option>
+                  <option value='retrieval'>Mode: retrieval</option>
+                  <option value='baseline'>Mode: baseline</option>
+                </select>
+                <button className='btn-primary' type='submit' disabled={loading}>
+                  <Play size={15} /> {loading ? 'Running...' : 'Run Query'}
+                </button>
+              </form>
+
+              <div className='samples'>
+                {SAMPLE_QUESTIONS.map((sq) => (
+                  <button
+                    key={sq}
+                    type='button'
+                    className='chip'
+                    onClick={() => {
+                      setQuestion(sq);
+                      runAsk(sq, mode);
+                    }}
+                  >
+                    {sq}
+                  </button>
+                ))}
+              </div>
+            </section>
+
+            {result && (
+              <>
+                <div className='metrics-row'>
+                  <div className='metric-box'>
+                    <div className='metric-label'>Status</div>
+                    <div className='metric-val'>
+                      {result.success ? (
+                        <span className='badge badge-ok'>
+                          <CheckCircle2 size={12} style={{ verticalAlign: '-2px' }} /> Success
+                        </span>
+                      ) : (
+                        <span className='badge badge-err'>
+                          <XCircle size={12} style={{ verticalAlign: '-2px' }} /> Failed / Refused
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                  <div className='metric-box'>
+                    <div className='metric-label'>Rows</div>
+                    <div className='metric-val mono'>{result.row_count ?? 0}</div>
+                  </div>
+                  <div className='metric-box'>
+                    <div className='metric-label'>Latency</div>
+                    <div className='metric-val mono'>{result.metrics?.latency_ms ?? 0} ms</div>
+                  </div>
+                  <div className='metric-box'>
+                    <div className='metric-label'>Tokens</div>
+                    <div className='metric-val mono'>
+                      {(result.metrics?.prompt_tokens ?? 0) + (result.metrics?.output_tokens ?? 0)}
+                    </div>
+                  </div>
+                  <div className='metric-box'>
+                    <div className='metric-label'>Retries</div>
+                    <div className='metric-val mono'>{result.reasoning?.retries ?? 0}</div>
+                  </div>
+                </div>
+
+                {!result.success && result.message && (
+                  <div className='card error-box'>{result.message}</div>
+                )}
+
+                {result.insight && (
+                  <section className='card'>
+                    <h2 className='section-title'>Analyst Insight</h2>
+                    <p className='insight-text'>{result.insight}</p>
+                  </section>
+                )}
+
+                <div className='grid-2'>
+                  <section className='card'>
+                    <h2 className='section-title'>Visualization ({result.chart?.type || 'none'})</h2>
+                    <ChartRenderer chart={result.chart} rows={result.rows} />
+                  </section>
+
+                  <section className='card'>
+                    <h2 className='section-title'>
+                      <Database size={15} style={{ verticalAlign: '-2px' }} /> Generated SQL &amp; Retrieval
+                    </h2>
+                    {result.plan && (
+                      <p style={{ fontSize: 13, color: 'var(--muted)', marginTop: 0 }}>
+                        <strong>Plan:</strong> {result.plan}
+                      </p>
                     )}
-                  </div>
-                </div>
-                <div className='metric-box'>
-                  <div className='metric-label'>Rows</div>
-                  <div className='metric-val mono'>{result.row_count ?? 0}</div>
-                </div>
-                <div className='metric-box'>
-                  <div className='metric-label'>Latency</div>
-                  <div className='metric-val mono'>{result.metrics?.latency_ms ?? 0} ms</div>
-                </div>
-                <div className='metric-box'>
-                  <div className='metric-label'>Tokens</div>
-                  <div className='metric-val mono'>
-                    {(result.metrics?.prompt_tokens ?? 0) + (result.metrics?.output_tokens ?? 0)}
-                  </div>
-                </div>
-                <div className='metric-box'>
-                  <div className='metric-label'>Retries</div>
-                  <div className='metric-val mono'>{result.reasoning?.retries ?? 0}</div>
-                </div>
-              </div>
-
-              {!result.success && result.message && (
-                <div className='card error-box'>{result.message}</div>
-              )}
-
-              {result.insight && (
-                <section className='card'>
-                  <h2 className='section-title'>Analyst Insight</h2>
-                  <p className='insight-text'>{result.insight}</p>
-                </section>
-              )}
-
-              <div className='grid-2'>
-                <section className='card'>
-                  <h2 className='section-title'>Visualization ({result.chart?.type || 'none'})</h2>
-                  <ChartRenderer chart={result.chart} rows={result.rows} />
-                </section>
-
-                <section className='card'>
-                  <h2 className='section-title'>
-                    <Database size={15} style={{ verticalAlign: '-2px' }} /> Generated SQL &amp; Retrieval
-                  </h2>
-                  {result.plan && (
-                    <p style={{ fontSize: 13, color: 'var(--muted)', marginTop: 0 }}>
-                      <strong>Plan:</strong> {result.plan}
+                    <pre className='sql-box'>{result.sql || '-- No SQL generated'}</pre>
+                    <p className='mono' style={{ fontSize: 12, color: 'var(--muted)', marginBottom: 0, marginTop: 10 }}>
+                      Tables: {(result.reasoning?.retrieved_tables || []).join(', ') || 'none'} (
+                      {result.reasoning?.retrieval_method || 'n/a'})
                     </p>
-                  )}
-                  <pre className='sql-box'>{result.sql || '-- No SQL generated'}</pre>
-                  <p className='mono' style={{ fontSize: 12, color: 'var(--muted)', marginBottom: 0, marginTop: 10 }}>
-                    Tables: {(result.reasoning?.retrieved_tables || []).join(', ') || 'none'} (
-                    {result.reasoning?.retrieval_method || 'n/a'})
-                  </p>
-                </section>
-              </div>
+                  </section>
+                </div>
 
-              {Array.isArray(result.rows) && result.rows.length > 0 && (
-                <section className='card'>
-                  <h2 className='section-title'>Query Results ({result.rows.length} rows)</h2>
-                  <div className='table-wrap'>
-                    <table>
-                      <thead>
-                        <tr>
-                          {(result.columns || Object.keys(result.rows[0])).map((col) => (
-                            <th key={col}>{col}</th>
-                          ))}
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {result.rows.map((row, idx) => (
-                          <tr key={idx}>
+                {Array.isArray(result.rows) && result.rows.length > 0 && (
+                  <section className='card'>
+                    <h2 className='section-title'>Query Results ({result.rows.length} rows)</h2>
+                    <div className='table-wrap'>
+                      <table>
+                        <thead>
+                          <tr>
                             {(result.columns || Object.keys(result.rows[0])).map((col) => (
-                              <td key={col} className='mono'>
-                                {String(row[col] ?? '')}
-                              </td>
+                              <th key={col}>{col}</th>
                             ))}
                           </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
-                </section>
-              )}
-            </>
-          )}
-        </>
-      )}
+                        </thead>
+                        <tbody>
+                          {result.rows.map((row, idx) => (
+                            <tr key={idx}>
+                              {(result.columns || Object.keys(result.rows[0])).map((col) => (
+                                <td key={col} className='mono'>
+                                  {String(row[col] ?? '')}
+                                </td>
+                              ))}
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  </section>
+                )}
+              </>
+            )}
+          </>
+        )}
 
-      {tab === 'traces' && (
-        <>
-          {tracesData.metrics && (
-            <div className='metrics-row'>
-              <div className='metric-box'>
-                <div className='metric-label'>Total Queries</div>
-                <div className='metric-val mono'>{tracesData.metrics.total_queries ?? 0}</div>
+        {tab === 'traces' && (
+          <>
+            {tracesData.metrics && (
+              <div className='metrics-row'>
+                <div className='metric-box'>
+                  <div className='metric-label'>Total Queries</div>
+                  <div className='metric-val mono'>{tracesData.metrics.total_queries ?? 0}</div>
+                </div>
+                <div className='metric-box'>
+                  <div className='metric-label'>Success Rate</div>
+                  <div className='metric-val mono'>{tracesData.metrics.success_rate ?? 'N/A'}</div>
+                </div>
+                <div className='metric-box'>
+                  <div className='metric-label'>Self-Healed</div>
+                  <div className='metric-val mono'>{tracesData.metrics.self_healed ?? 0}</div>
+                </div>
+                <div className='metric-box'>
+                  <div className='metric-label'>p50 Latency</div>
+                  <div className='metric-val mono'>{tracesData.metrics.p50_latency_ms ?? 0} ms</div>
+                </div>
+                <div className='metric-box'>
+                  <div className='metric-label'>p95 Latency</div>
+                  <div className='metric-val mono'>{tracesData.metrics.p95_latency_ms ?? 0} ms</div>
+                </div>
               </div>
-              <div className='metric-box'>
-                <div className='metric-label'>Success Rate</div>
-                <div className='metric-val mono'>{tracesData.metrics.success_rate ?? 'N/A'}</div>
-              </div>
-              <div className='metric-box'>
-                <div className='metric-label'>Self-Healed</div>
-                <div className='metric-val mono'>{tracesData.metrics.self_healed ?? 0}</div>
-              </div>
-              <div className='metric-box'>
-                <div className='metric-label'>p50 Latency</div>
-                <div className='metric-val mono'>{tracesData.metrics.p50_latency_ms ?? 0} ms</div>
-              </div>
-              <div className='metric-box'>
-                <div className='metric-label'>p95 Latency</div>
-                <div className='metric-val mono'>{tracesData.metrics.p95_latency_ms ?? 0} ms</div>
-              </div>
-            </div>
-          )}
+            )}
 
+            <section className='card'>
+              <h2 className='section-title'>Recent Query Traces</h2>
+              <div className='table-wrap'>
+                <table>
+                  <thead>
+                    <tr>
+                      <th>ID</th>
+                      <th>Question</th>
+                      <th>Mode</th>
+                      <th>Status</th>
+                      <th>Retries</th>
+                      <th>Rows</th>
+                      <th>Latency</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {(tracesData.traces || []).map((t) => (
+                      <tr key={t.id}>
+                        <td className='mono'>{t.id}</td>
+                        <td>{t.question}</td>
+                        <td className='mono'>{t.mode}</td>
+                        <td>
+                          <span className={t.success ? 'badge badge-ok' : 'badge badge-err'}>
+                            {t.success ? 'OK' : 'FAIL'}
+                          </span>
+                        </td>
+                        <td className='mono'>{t.retries}</td>
+                        <td className='mono'>{t.row_count}</td>
+                        <td className='mono'>{t.latency_ms} ms</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </section>
+          </>
+        )}
+
+        {tab === 'evals' && (
           <section className='card'>
-            <h2 className='section-title'>Recent Query Traces</h2>
-            <div className='table-wrap'>
-              <table>
-                <thead>
-                  <tr>
-                    <th>ID</th>
-                    <th>Question</th>
-                    <th>Mode</th>
-                    <th>Status</th>
-                    <th>Retries</th>
-                    <th>Rows</th>
-                    <th>Latency</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {(tracesData.traces || []).map((t) => (
-                    <tr key={t.id}>
-                      <td className='mono'>{t.id}</td>
-                      <td>{t.question}</td>
-                      <td className='mono'>{t.mode}</td>
-                      <td>
-                        <span className={t.success ? 'badge badge-ok' : 'badge badge-err'}>
-                          {t.success ? 'OK' : 'FAIL'}
-                        </span>
-                      </td>
-                      <td className='mono'>{t.retries}</td>
-                      <td className='mono'>{t.row_count}</td>
-                      <td className='mono'>{t.latency_ms} ms</td>
+            <h2 className='section-title'>Evaluation Runs</h2>
+            {(evalsData.runs || []).length === 0 ? (
+              <p style={{ color: 'var(--muted)', fontSize: 14 }}>
+                No eval runs saved yet. Run <code className='mono'>python -m scripts.eval_suite --mode full</code> in backend.
+              </p>
+            ) : (
+              <div className='table-wrap'>
+                <table>
+                  <thead>
+                    <tr>
+                      <th>Run ID</th>
+                      <th>Git SHA</th>
+                      <th>Questions</th>
+                      <th>Pass Rate</th>
+                      <th>Created At</th>
                     </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
+                  </thead>
+                  <tbody>
+                    {evalsData.runs.map((run) => (
+                      <tr key={run.id}>
+                        <td className='mono'>{run.id}</td>
+                        <td className='mono'>{run.git_sha || 'N/A'}</td>
+                        <td className='mono'>{run.n_questions}</td>
+                        <td className='mono'>{run.results?.pass_rate ?? 'N/A'}</td>
+                        <td className='mono'>{String(run.created_at)}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
           </section>
-        </>
-      )}
+        )}
+      </div>
 
-      {tab === 'evals' && (
-        <section className='card'>
-          <h2 className='section-title'>Evaluation Runs</h2>
-          {(evalsData.runs || []).length === 0 ? (
-            <p style={{ color: 'var(--muted)', fontSize: 14 }}>
-              No eval runs saved yet. Run <code className='mono'>python -m scripts.eval_suite --mode full</code> in backend.
-            </p>
-          ) : (
-            <div className='table-wrap'>
-              <table>
-                <thead>
-                  <tr>
-                    <th>Run ID</th>
-                    <th>Git SHA</th>
-                    <th>Questions</th>
-                    <th>Pass Rate</th>
-                    <th>Created At</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {evalsData.runs.map((run) => (
-                    <tr key={run.id}>
-                      <td className='mono'>{run.id}</td>
-                      <td className='mono'>{run.git_sha || 'N/A'}</td>
-                      <td className='mono'>{run.n_questions}</td>
-                      <td className='mono'>{run.results?.pass_rate ?? 'N/A'}</td>
-                      <td className='mono'>{String(run.created_at)}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          )}
-        </section>
-      )}
+      <footer className='site-footer'>
+        <p className='footer-credit'>
+          © 2026 <strong>Goli Anup Reddy</strong> · DataPilot Analytics · All rights reserved.
+        </p>
+        <div className='footer-links'>
+          <a href='https://github.com/golianupreddy/datapilot' target='_blank' rel='noreferrer'>
+            GitHub
+          </a>
+          <a href='https://www.linkedin.com/in/goli-anup-reddy-5b7a8630b/' target='_blank' rel='noreferrer'>
+            LinkedIn
+          </a>
+          <a href='https://golianupreddy.github.io/portfolio/' target='_blank' rel='noreferrer'>
+            Portfolio
+          </a>
+          <a href='https://datapilot-91i7.onrender.com/docs' target='_blank' rel='noreferrer'>
+            API Docs
+          </a>
+        </div>
+      </footer>
     </div>
   );
 }

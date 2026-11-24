@@ -1,10 +1,13 @@
 ﻿@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap');
 
 :root {
-  --bg: #0b0f17;
-  --panel: #111827;
-  --panel-2: #182234;
-  --border: #243046;
+  --bg: #070b12;
+  --bg-glow-1: rgba(56, 189, 248, 0.11);
+  --bg-glow-2: rgba(34, 197, 94, 0.08);
+  --grid-line: rgba(148, 163, 184, 0.045);
+  --panel: rgba(15, 23, 42, 0.84);
+  --panel-2: rgba(24, 34, 54, 0.92);
+  --border: rgba(148, 163, 184, 0.16);
   --text: #f1f5f9;
   --muted: #94a3b8;
   --accent: #38bdf8;
@@ -19,8 +22,16 @@
 
 body {
   margin: 0;
+  min-height: 100vh;
   font-family: 'Inter', system-ui, -apple-system, sans-serif;
-  background: var(--bg);
+  background-color: var(--bg);
+  background-image:
+    radial-gradient(900px 460px at 12% -6%, var(--bg-glow-1), transparent 65%),
+    radial-gradient(820px 440px at 90% 4%, var(--bg-glow-2), transparent 65%),
+    linear-gradient(to right, var(--grid-line) 1px, transparent 1px),
+    linear-gradient(to bottom, var(--grid-line) 1px, transparent 1px);
+  background-size: 100% 100%, 100% 100%, 32px 32px, 32px 32px;
+  background-attachment: fixed;
   color: var(--text);
   line-height: 1.5;
 }
@@ -31,8 +42,15 @@ code, pre, .mono {
 
 .app-shell {
   max-width: 1280px;
+  min-height: 100vh;
   margin: 0 auto;
-  padding: 24px 20px 64px;
+  padding: 24px 20px 28px;
+  display: flex;
+  flex-direction: column;
+}
+
+.main-content {
+  flex: 1 0 auto;
 }
 
 .topbar {
@@ -61,6 +79,7 @@ code, pre, .mono {
   place-items: center;
   color: #fff;
   font-weight: 700;
+  box-shadow: 0 6px 20px rgba(2, 132, 199, 0.25);
 }
 
 .brand h1 {
@@ -92,6 +111,12 @@ code, pre, .mono {
   font-size: 14px;
   font-weight: 500;
   cursor: pointer;
+  transition: border-color 0.2s, color 0.2s, background 0.2s;
+}
+
+.tab-btn:hover {
+  color: var(--text);
+  border-color: rgba(148, 163, 184, 0.35);
 }
 
 .tab-btn.active {
@@ -102,10 +127,12 @@ code, pre, .mono {
 
 .card {
   background: var(--panel);
+  backdrop-filter: blur(10px);
   border: 1px solid var(--border);
   border-radius: 12px;
   padding: 18px;
   margin-bottom: 18px;
+  box-shadow: 0 12px 30px rgba(0, 0, 0, 0.28);
 }
 
 .ask-form {
@@ -119,7 +146,7 @@ code, pre, .mono {
   padding: 11px 14px;
   border-radius: 8px;
   border: 1px solid var(--border);
-  background: var(--bg);
+  background: rgba(7, 11, 18, 0.85);
   color: var(--text);
   font-size: 14px;
 }
@@ -133,7 +160,7 @@ code, pre, .mono {
   padding: 11px 12px;
   border-radius: 8px;
   border: 1px solid var(--border);
-  background: var(--bg);
+  background: rgba(7, 11, 18, 0.85);
   color: var(--text);
   font-size: 14px;
 }
@@ -168,10 +195,11 @@ code, pre, .mono {
   padding: 5px 10px;
   border-radius: 999px;
   border: 1px solid var(--border);
-  background: var(--bg);
+  background: rgba(7, 11, 18, 0.75);
   color: var(--muted);
   font-size: 12px;
   cursor: pointer;
+  transition: border-color 0.2s, color 0.2s;
 }
 
 .chip:hover {
@@ -188,6 +216,7 @@ code, pre, .mono {
 
 .metric-box {
   background: var(--panel);
+  backdrop-filter: blur(10px);
   border: 1px solid var(--border);
   border-radius: 10px;
   padding: 12px 14px;
@@ -224,7 +253,7 @@ code, pre, .mono {
 }
 
 .sql-box {
-  background: var(--bg);
+  background: rgba(7, 11, 18, 0.85);
   border: 1px solid var(--border);
   border-radius: 8px;
   padding: 12px;
@@ -289,4 +318,43 @@ th {
   font-weight: 700;
   color: var(--accent);
   padding: 24px 0;
+}
+
+.site-footer {
+  margin-top: 32px;
+  padding-top: 18px;
+  border-top: 1px solid var(--border);
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  font-size: 12.5px;
+  color: var(--muted);
+}
+
+.footer-credit {
+  margin: 0;
+}
+
+.footer-credit strong {
+  color: var(--text);
+  font-weight: 600;
+}
+
+.footer-links {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16px;
+}
+
+.footer-links a {
+  color: var(--muted);
+  text-decoration: none;
+  transition: color 0.2s;
+}
+
+.footer-links a:hover {
+  color: var(--accent);
+  text-decoration: underline;
 }
