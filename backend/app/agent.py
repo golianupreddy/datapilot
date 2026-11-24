@@ -14,7 +14,7 @@ from .config import get_settings
 from .db import ExecutionError, admin_conn, execute_readonly
 from .guardrails import GuardrailError, validate_sql
 from .llm import LLMClient, LLMError, LLMResult
-from .retriever import SchemaRetriever
+from .retriever import RetrievalResult, SchemaRetriever
 from .schema_docs import BUSINESS_RULES, TABLE_OVERVIEW
 
 log = logging.getLogger("datapilot.agent")
@@ -138,6 +138,26 @@ def sanitize_chart(chart: Any, columns: list[str], rows: list[dict[str, Any]]) -
     return {"type": ctype, "x": x, "y": ys[:4]}
 
 
+PLAN_AND_SQL_SYSTEM = """You are DataPilot, an analytics assistant over the Northwind trading-company PostgreSQL database.
+Do two things in ONE response:
+1. Decide whether the message can be answered with a READ-ONLY SQL query over the schema you are given.
+   Mark it out_of_scope if it asks to modify data (insert/update/delete/drop), asks for credentials or system
+   information, or is not a question about this data.
+2. If it is a data question, write ONE PostgreSQL SELECT (a WITH ... CTE is allowed) using ONLY the tables and
+   columns in the schema.
+SQL rules:
+- Never write INSERT/UPDATE/DELETE/DDL. No trailing semicolon. Qualify columns with table aliases when joining.
+- Give output columns short, readable snake_case aliases.
+- For "top N" / "best" / "worst" questions use ORDER BY ... LIMIT N. Order time series by date ascending.
+- Cast to numeric before ROUND: ROUND((expr)::numeric, 2).
+- Follow the BUSINESS RULES exactly.
+Return JSON only:
+{"intent": "data_question" | "out_of_scope",
+ "plan": "<max 2 sentences: tables, joins, aggregations>",
+ "sql": "<the query, or an empty string if out_of_scope>",
+ "refusal": "<one polite sentence if out_of_scope, else empty string>"}"""
+
+
 class DataPilotAgent:
     def __init__(self, llm: LLMClient, retriever: SchemaRetriever) -> None:
         self.llm = llm
@@ -178,10 +198,27 @@ class DataPilotAgent:
             raise LLMError("Critic returned no SQL.")
         return obj
 
+    def plan_and_generate(self, question: str, schema_ctx: str, usage: Usage) -> dict[str, Any]:
+        prompt = f"SCHEMA:\n{schema_ctx}\n\nBUSINESS RULES:\n{BUSINESS_RULES}\n\nQUESTION: {question}"
+        obj, res = self.llm.generate_json(prompt, system=PLAN_AND_SQL_SYSTEM)
+        usage.add(res)
+        intent = obj.get("intent") if obj.get("intent") in ("data_question", "out_of_scope") else "data_question"
+        sql = obj.get("sql") if isinstance(obj.get("sql"), str) else ""
+        if intent == "data_question" and not sql.strip():
+            raise LLMError("Model returned no SQL.")
+        return {
+            "intent": intent,
+            "plan": str(obj.get("plan", "")),
+            "refusal": str(obj.get("refusal", "")),
+            "sql": sql.strip(),
+        }
+
     def analyze(self, question: str, columns: list[str], rows: list[dict[str, Any]], usage: Usage) -> dict[str, Any]:
         sample = json.dumps(rows[:25], default=str)[:6000]
         prompt = f"QUESTION: {question}\nCOLUMNS: {columns}\nROW COUNT: {len(rows)}\nSAMPLE ROWS: {sample}"
-        obj, res = self.llm.generate_json(prompt, system=ANALYST_SYSTEM, max_output_tokens=768)
+        obj, res = self.llm.generate_json(
+            prompt, system=ANALYST_SYSTEM, max_output_tokens=768, deadline_s=10, max_models=1
+        )
         usage.add(res)
         return {"insight": str(obj.get("insight", "")).strip(), "chart": sanitize_chart(obj.get("chart"), columns, rows)}
 
@@ -192,14 +229,18 @@ class DataPilotAgent:
         max_retries: int | None = None,
         plan: str = "",
         usage: Usage | None = None,
+        retrieval: RetrievalResult | None = None,
+        initial_sql: str | None = None,
     ) -> PipelineResult:
         usage = usage or Usage()
         max_retries = self.s.max_sql_retries if max_retries is None else max_retries
-        retrieval = self.retriever.retrieve(question) if use_retrieval else self.retriever.full_schema()
+
+        if retrieval is None:
+            retrieval = self.retriever.retrieve(question) if use_retrieval else self.retriever.full_schema()
         ctx, schema_label = retrieval.context, ("retrieved" if use_retrieval else "full")
         base = dict(tables=retrieval.tables, retrieval_method=retrieval.method, schema_chars=len(retrieval.context))
 
-        sql = self.generate_sql(question, ctx, plan, usage)
+        sql = initial_sql or self.generate_sql(question, ctx, plan, usage)
         attempts: list[dict[str, Any]] = []
         history: list[tuple[str, str]] = []
         repairs = 0
@@ -270,14 +311,16 @@ class DataPilotAgent:
         }
         cacheable = True
         try:
-            plan = ""
+            retrieval = None
+            initial_sql = None
             if mode == "full":
-                route = self.route(question, usage)
-                resp["intent"], plan = route["intent"], str(route.get("plan", ""))
-                resp["plan"] = plan
-                if resp["intent"] != "data_question":
-                    resp["message"] = route.get("refusal") or "I can only answer questions about the Northwind sales database."
+                retrieval = self.retriever.retrieve(question)
+                pg = self.plan_and_generate(question, retrieval.context, usage)
+                resp["intent"], resp["plan"] = pg["intent"], pg["plan"]
+                if pg["intent"] != "data_question":
+                    resp["message"] = pg["refusal"] or "I can only answer questions about the Northwind sales database."
                     return self._finish(resp, usage, t0, cacheable=False)
+                initial_sql = pg["sql"]
             else:
                 resp["intent"] = "data_question"
 
@@ -285,8 +328,10 @@ class DataPilotAgent:
                 question,
                 use_retrieval=(mode != "baseline"),
                 max_retries=(s.max_sql_retries if mode == "full" else 0),
-                plan=plan,
+                plan=resp["plan"],
                 usage=usage,
+                retrieval=retrieval,
+                initial_sql=initial_sql,
             )
             resp["sql"], resp["columns"], resp["rows"], resp["row_count"] = pr.sql, pr.columns, pr.rows, len(pr.rows)
             resp["reasoning"] = {

@@ -12,6 +12,7 @@ from app.agent import DataPilotAgent
 from app.db import admin_conn
 from app.llm import LLMClient
 from app.retriever import SchemaRetriever
+from scripts.eval_checkpoint import Checkpoint, split_scored
 
 EVAL_CASES: list[dict[str, Any]] = [
     {
@@ -140,7 +141,26 @@ def main() -> None:
 
     llm = LLMClient()
     agent = DataPilotAgent(llm, SchemaRetriever(llm))
-    results = [evaluate_case(agent, c, mode=args.mode) for c in EVAL_CASES]
+    ckpt = Checkpoint(f"scripts/.eval_{args.mode}.json", resume=True)
+    results: list[dict[str, Any]] = []
+    for c in EVAL_CASES:
+        cached_rec = ckpt.get(c["id"])
+        if cached_rec is not None:
+            results.append(cached_rec)
+            continue
+        rec = evaluate_case(agent, c, mode=args.mode)
+        err_txt = (rec.get("error") or "").lower()
+        if not rec.get("success") and ("unavailable right now" in err_txt or "no model answered" in err_txt):
+            rec["infra_error"] = True
+        ckpt.put(c["id"], rec)
+        results.append(rec)
+
+    scored_results, infra_count = split_scored(results)
+    if infra_count:
+        print(f"\n{infra_count} case(s) hit LLM outages. Re-run the same command to resume only those. Nothing saved to Neon.")
+        sys.exit(3)
+
+    results = scored_results
 
     passed_count = sum(1 for r in results if r["passed"])
     for r in results:
@@ -150,6 +170,7 @@ def main() -> None:
 
     print(f"\nSummary ({args.mode}): {passed_count}/{len(results)} passed.")
 
+    ckpt.clear()
     if not args.no_save:
         payload = {
             "mode": args.mode,

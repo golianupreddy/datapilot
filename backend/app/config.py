@@ -15,6 +15,11 @@ class Settings(BaseSettings):
     llm_thinking_budget: int = 0
     llm_max_retries: int = 5
     llm_min_interval_seconds: float = 0.0
+    llm_models: str = ""
+    llm_call_deadline_s: float = 30.0
+    llm_request_timeout_s: float = 20.0
+    llm_retries_per_model: int = 1
+    llm_cooldown_s: float = 60.0
 
     database_url_admin: str
     database_url_ro: str

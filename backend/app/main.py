@@ -118,3 +118,8 @@ def evals():
             "SELECT id, created_at, git_sha, n_questions, results FROM eval_runs ORDER BY id DESC LIMIT 5"
         ).fetchall()
     return {"runs": rows}
+
+
+@app.get("/llm/status")
+def llm_status():
+    return {"chain": get_agent().llm.status()}
