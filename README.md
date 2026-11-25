@@ -1,38 +1,103 @@
 ﻿# DataPilot Analytics
 
-**Read-only natural-language-to-SQL workbench with self-healing queries and built-in telemetry, running over the Northwind PostgreSQL database.**
+**A production-oriented, read-only natural-language-to-SQL analytics workbench with hybrid `pgvector` schema retrieval, `sqlglot` AST guardrails, bounded self-healing query repair, and PostgreSQL-persisted telemetry & evaluation scorecards.**
 
-| | |
+| Resource | URL |
 |---|---|
-| **Live app** | https://datapilot-bay.vercel.app/ |
-| **API** | https://datapilot-91i7.onrender.com (docs at `/docs`) |
-| **Portfolio** | https://golianupreddy.github.io/portfolio/ |
+| **Live Web App (Vercel)** | https://datapilot-bay.vercel.app/ |
+| **REST API & OpenAPI Docs (Render)** | https://datapilot-91i7.onrender.com (`/docs`) |
+| **Developer Portfolio** | https://golianupreddy.github.io/portfolio/ |
 
-> Hosted on free tiers (Render, Vercel, Neon). After idle time the first request can take up to a minute while the API wakes up.
+> **Note on Cold Starts:** Deployed on free-tier infrastructure (Vercel, Render, Neon). After idle periods, the first API request may take ~30–50 seconds while the Render service wakes up.
 
-## What it does
+---
 
-Ask a business question in plain English. DataPilot retrieves the relevant schema, plans and writes SQL, validates it, runs it as a **SELECT-only** database role, repairs its own mistakes, and returns a table, a chart, and a short analyst insight. Every run is traced, and a benchmark suite scores the agent.
+## System Overview
 
-- **Ask SQL:** preset and custom prompts, mode selector (`full` / `retrieval` / `baseline`), status, latency, token and retry KPIs, analyst insight, bar/line/pie charts, results table, and an inspector for the generated SQL and retrieved tables.
-- **Traces:** p50/p95 latency, success rate, self-healed count, and a log of recent runs.
-- **Evals:** saved benchmark scorecards stored in PostgreSQL.
+DataPilot translates plain-English business questions over the **Northwind** relational schema into safe, executable PostgreSQL queries, automatically visualizes results, and records full execution telemetry. Every query passes through deterministic AST validation and executes under a least-privilege read-only database role (`datapilot_ro`).
 
-## Architecture & Pipeline
+### Core Capabilities
 
-1. **Hybrid retrieval:** Table descriptions are embedded (`gemini-embedding-001`, 768 dimensions) in `pgvector` and fused with lexical overlap so only relevant tables reach the prompt.
-2. **Plan + generate:** One LLM call decides whether the question is answerable and writes the query. Out-of-scope or write requests are refused here.
-3. **Validate & execute:** SQL is parsed to an AST with `sqlglot` and run under a least-privilege read-only role (`datapilot_ro`) with a statement timeout.
-4. **Self-heal:** On a database error, guardrail rejection, or empty result, a critic agent diagnoses the failure and rewrites the query with bounded retries.
-5. **Analyse:** The model drafts an insight and picks a chart type (best-effort; data still returns if the model is unavailable).
+- **Ask SQL Workbench:** Interactive query workspace with curated preset prompts, execution mode selector (`full`, `retrieval`, `baseline`), KPI telemetry cards (status, latency, token usage, retry count), automated analyst takeaways, dynamic Recharts visualizations (bar, line, pie), sortable data tables, and a SQL + retrieved-table inspector.
+- **Execution Telemetry (`/traces`):** Real-time observability dashboard tracking `p50` / `p95` end-to-end latency, success rate, self-healed query count, model routing, and historical run logs.
+- **Benchmark Scorecards (`/evals`):** Automated 10-case evaluation suite comparing `full`, `retrieval`, and `baseline` modes, persisted directly in Neon PostgreSQL (`eval_runs`).
 
-## Guardrails & Reliability
+---
 
-- **SQL Guardrails:** Single `SELECT` (CTEs allowed), table allow-list, system catalog block, automatic `LIMIT` cap, and `datapilot_ro` read-only role.
-- **LLM Reliability:** Model fallback chain (`LLM_MODELS`), per-model circuit-breaker cooldowns, fail-fast retries, merged planner+SQL call, and query/embedding caching.
-- **Evaluation:** 10-case benchmark (`backend/scripts/eval_suite.py`) across `full` (`10/10`), `retrieval` (`8/10`), and `baseline` (`8/10`) modes persisted to Neon `eval_runs`, plus deterministic unit tests (`backend/tests/test_self_healing.py`).
-- **Stack & API:** FastAPI, `psycopg` 3, `sqlglot`, Google GenAI SDK, Neon PostgreSQL + `pgvector`, React (Vite), Recharts, Render, Vercel (`POST /ask`, `GET /traces`, `GET /evals`, `GET /health`, `GET /llm/status`).
+## Architecture & Query Pipeline
+
+```text
+User Question (Natural Language)
+        │
+        ▼
+┌───────────────────────────────────────────────────────────────┐
+│ 1. Hybrid Schema Retrieval                                    │
+│    • 768-dim pgvector cosine similarity (gemini-embedding-001)│
+│    • Lexical keyword overlap fusion -> Top-K relevant tables  │
+└───────────────────────────────┬───────────────────────────────┘
+                                │
+                                ▼
+┌───────────────────────────────────────────────────────────────┐
+│ 2. Intent Gate & SQL Generation                               │
+│    • Single merged LLM call validates answerability & scope   │
+│    • Rejects out-of-domain or mutating (DDL/DML) prompts      │
+└───────────────────────────────┬───────────────────────────────┘
+                                │
+                                ▼
+┌───────────────────────────────────────────────────────────────┐
+│ 3. Deterministic AST Guardrail & Read-Only Execution          │
+│    • sqlglot AST check: single SELECT/CTE, table allow-list,  │
+│      system catalog block, automatic LIMIT enforcement        │
+│    • Executed via least-privilege `datapilot_ro` role + timeout│
+└───────────────────────────────┬───────────────────────────────┘
+                                │
+                 ┌──────────────┴──────────────┐
+                 │ Error / Rejection / 0 Rows  │ Success
+                 ▼                             ▼
+┌─────────────────────────────────┐  ┌──────────────────────────┐
+│ 4. Bounded Self-Healing Critic  │  │ 5. Insight & Chart Spec  │
+│    • Diagnoses DB/AST failure   │  │    • Analyst summary     │
+│    • Rewrites SQL (max retries) ├─►│    • Chart type selection│
+└─────────────────────────────────┘  └─────────────┬────────────┘
+                                                   │
+                                                   ▼
+                                     ┌──────────────────────────┐
+                                     │ 6. Telemetry Persistence │
+                                     │    • Logged to PostgreSQL│
+                                     └──────────────────────────┘
+
+---
+
+## Local Development & Testing
+
+### 1. Backend Setup
+
+```bash
+cd backend
+python -m venv .venv
+# Windows PowerShell: .venv\Scripts\Activate.ps1
+# macOS/Linux: source .venv/bin/activate
+pip install -r requirements.txt
+uvicorn app.main:app --reload --port 8000
+
+Configure environment variables in backend/.env:
+- DATABASE_URL — Neon PostgreSQL connection string (admin/owner for traces & eval writes)
+- READONLY_DATABASE_URL — Least-privilege datapilot_ro connection string for generated query execution
+- GEMINI_API_KEY — Google AI Studio API key
+- LLM_MODELS — Comma-separated fallback model chain
+
+### 2. Frontend Setup
+cd frontend
+npm install
+npm run dev
+
+### 3. Run Unit Tests & Evaluation Suite
+cd backend
+pytest
+python scripts/eval_suite.py --mode full
+
+---
 
 ## License
 
-MIT
+MIT License — built by Goli Anup Reddy (https://golianupreddy.github.io/portfolio/).
