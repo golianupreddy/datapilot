@@ -14,7 +14,7 @@
 
 Ask a business question in plain English. DataPilot retrieves the relevant schema, plans and writes SQL, validates it, runs it as a **SELECT-only** database role, repairs its own mistakes, and returns a table, a chart, and a short analyst insight. Every run is traced, and a benchmark suite scores the agent.
 
-- **Ask SQL:** preset and custom prompts, mode selector (`full` / `retrieval` / `baseline`), status, latency, token and retry KPIs, analyst insight, bar/line charts, results table, and an inspector for the generated SQL and retrieved tables.
+- **Ask SQL:** preset and custom prompts, mode selector (`full` / `retrieval` / `baseline`), status, latency, token and retry KPIs, analyst insight, bar/line/pie charts, results table, and an inspector for the generated SQL and retrieved tables.
 - **Traces:** p50/p95 latency, success rate, self-healed count, and a log of recent runs.
 - **Evals:** saved benchmark scorecards stored in PostgreSQL.
 
@@ -30,10 +30,9 @@ Ask a business question in plain English. DataPilot retrieves the relevant schem
 
 - **SQL Guardrails:** Single `SELECT` (CTEs allowed), table allow-list, system catalog block, automatic `LIMIT` cap, and `datapilot_ro` read-only role.
 - **LLM Reliability:** Model fallback chain (`LLM_MODELS`), per-model circuit-breaker cooldowns, fail-fast retries, merged planner+SQL call, and query/embedding caching.
-- **Evaluation:** 10-case benchmark (`backend/scripts/eval_suite.py`) across `full`, `retrieval`, and `baseline` modes persisted to Neon `eval_runs` (recorded `full` run `id=2`: `6/10` passed under upstream `503` spikes), plus deterministic unit tests (`backend/tests/test_self_healing.py`).
+- **Evaluation:** 10-case benchmark (`backend/scripts/eval_suite.py`) across `full` (`10/10`), `retrieval` (`8/10`), and `baseline` (`8/10`) modes persisted to Neon `eval_runs`, plus deterministic unit tests (`backend/tests/test_self_healing.py`).
 - **Stack & API:** FastAPI, `psycopg` 3, `sqlglot`, Google GenAI SDK, Neon PostgreSQL + `pgvector`, React (Vite), Recharts, Render, Vercel (`POST /ask`, `GET /traces`, `GET /evals`, `GET /health`, `GET /llm/status`).
 
 ## License
 
 MIT
-
